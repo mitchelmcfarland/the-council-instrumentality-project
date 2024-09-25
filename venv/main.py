@@ -24,11 +24,32 @@ async def send_message(message: Message, user_message: str) -> None:
         
     try:
         response: str = get_response(user_message)
-        await message.author.send(response) if is_private else message.channel.send(response)
+        await message.author.send(response) if is_private else await message.channel.send(response)
     except Exception as e:
         print(e)
 
+#bot startup
+@client.event
+async def on_ready() -> None:
+    print(f'{client.user} is now running.')
+    
+#step idk handling incoming messages
+@client.event
+async def on_message(message: Message) -> None:
+    if message.author == client.user:
+        return
+    
+    username: str = str(message.author)
+    user_message: str = message.content
+    channel: str = str(message.channel)
+    
+    print(f'[{channel}] {username}: "{user_message}"')
+    await send_message(message, user_message)
 
-        
+
+#main
+def main() -> None:
+    client.run(token=TOKEN)
     
-    
+if __name__ == "__main__":
+    main()    

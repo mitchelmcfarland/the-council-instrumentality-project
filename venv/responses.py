@@ -4,11 +4,11 @@ def get_response(user_input: str) -> str:
     lowered:str = user_input.lower()
     
     
-    if lowered == '':
+    if lowered == 'hey':
         return 'Speak up bruh'
     elif 'hello' in lowered:
         return 'wsg gang'
     elif 'roll dice' in lowered:
         return f'thas a {randint(1, 6)}'
     else:
-        return 'im a fraud :('
+        return 'im a fraud :( im not a real ai yet, but give mitchel some time'
