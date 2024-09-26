@@ -1,56 +1,106 @@
+# index_message.py
+
 import os
-from pinecone import Pinecone, ServerlessSpec
-from transformers import AutoModel, AutoTokenizer
 import torch
+from pinecone import Pinecone, ServerlessSpec
+from datasets import Dataset
+from semantic_router.encoders import HuggingFaceEncoder
+from tqdm.auto import tqdm
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-PINECONE_ENV = os.getenv('PINECONE_ENV')
-INDEX_NAME = 'council-instrumentality-project'  # Replace with your index name
 
-# Initialize Pinecone
-pc = Pinecone(api_key=PINECONE_API_KEY)
+# Initialize Pinecone using the new method
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_env = os.getenv("PINECONE_ENV")
+index_name = "message-index"
 
-# Create or connect to your index
-if INDEX_NAME not in pc.list_indexes().names():
+# Create Pinecone instance
+pc = Pinecone(api_key=pinecone_api_key)
+
+# Check if the index exists, otherwise create it
+if index_name not in pc.list_indexes().names():
     pc.create_index(
-        name=INDEX_NAME,
-        dimension=384,  # This should match the dimension of your embedding model
-        metric='cosine',  # Use cosine similarity for vector search
-        spec=ServerlessSpec(cloud='aws', region='us-east-1')  # Update as needed
+        name=index_name, 
+        dimension=768,  # Make sure this matches the embedding dimension
+        metric='cosine',
+        spec=ServerlessSpec(
+            cloud='aws', 
+            region=pinecone_env
+        )
     )
+    print(f"Index {index_name} created.")
+else:
+    print(f"Index {index_name} already exists.")
 
-index = pc.Index(INDEX_NAME)
+# Connect to the index
+index = pc.Index(index_name)
+print(f"Connected to index: {index_name}")
 
-# Load the embedding model and tokenizer
-model_name = 'jinaai/jina-embeddings-v2-base-en'
-model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+# Initialize Encoder and set device
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
-# Function to convert text to vector
-def text_to_vector(text):
-    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    # Get the last hidden state (average pooling)
-    vector = torch.mean(outputs.last_hidden_state, dim=1).squeeze().tolist()
-    return vector
+# Initialize HuggingFace Encoder
+encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
-# Read the .txt file and prepare data for Pinecone upload
-file_path = 'venv/all_messages.txt'  # Replace with the path to your file
-with open(file_path, 'r', encoding='utf-8') as file:
-    text_data = file.readlines()
+# Move the underlying model and tokenizer to the correct device
+encoder._model.to(device)  # Using _model instead of model
+# No need to move the tokenizer to device as it doesn't perform tensor computations
+# encoder._tokenizer is just used for text processing
 
-# Prepare data for Pinecone upload
-vectors = []
-for idx, line in enumerate(text_data):
-    vector = text_to_vector(line)
-    metadata = {'text': line}
-    vectors.append((f'doc-{idx}', vector, metadata))
+# File path for the messages file
+file_path = 'venv/timestamped.txt'
 
-# Upload data to Pinecone
-index.upsert(vectors)
+# Function to load messages from the text file
+def load_messages(filepath):
+    data = []
+    with open(filepath, 'r', encoding='utf-8') as file:
+        for idx, line in enumerate(file):
+            line = line.strip()
+            if line:
+                data.append({
+                    'id': str(idx),
+                    'metadata': {'content': line}
+                })
+    return data
 
-print(f"Successfully indexed {len(vectors)} messages to Pinecone.")
+# Load and format the dataset
+messages_data = load_messages(file_path)
+dataset = Dataset.from_list(messages_data)
+print(f"Loaded {len(messages_data)} messages from {file_path}.")
+
+# Function to create embeddings for each message
+def create_embeddings(dataset, encoder, device):
+    embeddings = []
+    for data in tqdm(dataset['metadata'], desc="Creating embeddings"):
+        # Move the text data to the GPU (if available) for embedding
+        inputs = encoder._tokenizer([data['content']], return_tensors='pt', padding=True).to(device)
+        with torch.no_grad():
+            outputs = encoder._model(**inputs)
+            embedding = outputs.last_hidden_state.mean(dim=1).cpu().numpy()[0]
+        embeddings.append(embedding)
+    return embeddings
+
+# Generate embeddings for the dataset using GPU
+print("Generating embeddings with GPU support..." if device == 'cuda' else "Generating embeddings...")
+embeddings = create_embeddings(dataset, encoder, device)
+print("Embeddings generated successfully.")
+
+# Check the embedding dimension
+dims = len(embeddings[0])
+print(f"Embedding Dimension: {dims}")
+
+# Upsert embeddings and metadata to the index
+batch_size = 128
+print(f"Indexing {len(dataset)} messages in batches of {batch_size}...")
+for i in tqdm(range(0, len(dataset), batch_size), desc="Indexing batches"):
+    i_end = min(len(dataset), i + batch_size)
+    batch = dataset[i:i_end]
+    batch_embeddings = embeddings[i:i_end]
+    to_upsert = list(zip(batch['id'], batch_embeddings, batch['metadata']))
+    index.upsert(vectors=to_upsert)
+    print(f"Batch {i//batch_size + 1} indexed.")
+
+print("Indexing completed successfully.")
