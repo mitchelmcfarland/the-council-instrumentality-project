@@ -38,13 +38,15 @@ async def on_ready() -> None:
 async def on_message(message: Message) -> None:
     if message.author == client.user:
         return
-    
-    username: str = str(message.author)
-    user_message: str = message.content
-    channel: str = str(message.channel)
-    
-    print(f'[{channel}] {username}: "{user_message}"')
-    await send_message(message, user_message)
+
+    # Check if the bot is mentioned in the message
+    if client.user in message.mentions:
+        username: str = str(message.author)
+        user_message: str = message.content
+        channel: str = str(message.channel)
+        
+        print(f'[{channel}] {username}: "{user_message}"')
+        await send_message(message, user_message)
 
 
 #main
