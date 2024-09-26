@@ -1,5 +1,3 @@
-# index_message.py
-
 import os
 import torch
 from pinecone import Pinecone, ServerlessSpec
