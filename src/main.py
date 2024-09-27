@@ -40,7 +40,7 @@ async def on_message(message: Message) -> None:
         return
 
     # Check if the bot is mentioned in the message
-    if client.user in message.mentions:
+    if (client.user in message.mentions):
         username: str = str(message.author)
         user_message: str = message.content
         channel: str = str(message.channel)

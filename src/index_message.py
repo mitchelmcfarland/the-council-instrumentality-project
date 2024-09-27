@@ -49,7 +49,7 @@ encoder._model.to(device)  # Using _model instead of model
 # encoder._tokenizer is just used for text processing
 
 # File path for the messages file
-file_path = 'venv/timestamped.txt'
+file_path = 'timestamped.txt'
 
 # Function to load messages from the text file
 def load_messages(filepath):
