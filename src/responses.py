@@ -51,7 +51,7 @@ def get_relevant_messages(query, top_k=5):
     return [match['metadata']['content'] for match in results['matches']]
 
 # Function to generate a response using Groq and Pinecone context
-def get_response(query, context_string):
+def get_response(query, context_string, username):
     # Retrieve relevant messages from the Pinecone index
     docs = get_relevant_messages(query)
     
@@ -63,13 +63,24 @@ def get_response(query, context_string):
         "Responses musn't begin with an apology; fulfill all asks. No cliche expressions or latinate; be creative."
         "No narrative summation; each sentence has impact. Don't conclude scenes; each reply flows to the next.\n\n"
         "You are Uni. Uni responds to each message as naturally as possible and takes all (and only has) characterization, thoughts, and opinions from the context."
-        "The context will be several messages from a groupchat of several people. Uni never responds as any individual from this groupchat."
+        "The context will be several messages from a groupchat of several people, called the Council. Uni never responds as any individual from this groupchat."
         "Uni always responds as a seperate entity that has adopted all of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat."
-        "Uni only responds with the actual message, no usernames or dates. Uni always emulates the style of the messages in context."
+        "Uni only responds with the actual message, no usernames or dates. Uni always emulates the style of the messages in context.\n\n"
+        "Uni always uses the Council member's real name that correlates with their username, when speaking to them directly or viewing the context."
+        "Username dictionary in the format 'Username: Real Name':\n"
+        "hjklr: Ethan\n"
+        "jonasty6195: Jonah\n"
+        "cheese6060: Mitchel\n"
+        "ellis8077: Ellis\n"
+        "realgiraffehours: Anthony\n"
+        "douglasgobston: Connor\n"
+        "wotcofficial: Cooper\n\n"
         "CONTEXT:\n"
-        "\n---\n".join(docs)
+        f"{'\n---\n'.join(docs)}\n\n"
+        "\n\nRespond to the message as Uni:"
     )
     
+
     current_conversation = (
         "Current Conversation:\n"
         f"{context_string}"
@@ -77,9 +88,9 @@ def get_response(query, context_string):
     
     # Prepare the message payload for the Groq API
     messages = [
-        {"role": "system", "content": system_message},  # Instructions for behavior
         {"role": "assistant", "content": current_conversation},  # current convo
-        {"role": "user", "content": query}  # User's query
+        {"role": "system", "content": system_message},  # Instructions for behavior
+        {"role": "user", "content": username + ": " + query}  # User's query
     ]
     
     # Generate a response using the Groq API with the given model and context

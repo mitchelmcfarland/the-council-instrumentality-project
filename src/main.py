@@ -14,7 +14,7 @@ intents.message_content = True
 client: Client = Client(intents=intents)
 
 #message functionality
-async def send_message(message: Message, user_message: str, context_string: str) -> None:
+async def send_message(message: Message, user_message: str, context_string: str, username: str) -> None:
     if not user_message:
         print('(intents are not working)')
         return
@@ -23,7 +23,7 @@ async def send_message(message: Message, user_message: str, context_string: str)
         user_message = user_message[1:]
         
     try:
-        response: str = get_response(user_message, context_string)
+        response: str = get_response(user_message, context_string, username)
         await message.author.send(response) if is_private else await message.channel.send(response)
     except Exception as e:
         print(e)
@@ -51,14 +51,14 @@ async def on_message(message: Message) -> None:
         context_messages = []
         
         # Fetch the last 100 messages in the channel
-        async for msg in message.channel.history(limit=100):
+        async for msg in message.channel.history(limit=50):
             formatted_message = f"[{msg.created_at}] {msg.author.name}: {msg.content}"
             context_messages.append(formatted_message)
         
         # Create a single string with all the messages
         context_string = "\n".join(context_messages)
 
-        await send_message(message, user_message, context_string)
+        await send_message(message, user_message, context_string, username)
 
 
 #main
