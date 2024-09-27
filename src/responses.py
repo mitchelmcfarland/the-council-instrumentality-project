@@ -36,7 +36,7 @@ encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 encoder._model.to(device)
 
 # Function to query relevant messages based on user input
-def get_relevant_messages(query, top_k=5):
+def get_relevant_messages(query, top_k=25):
     # Convert user query to an embedding vector
     query_embedding = encoder([query])
     

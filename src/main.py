@@ -43,22 +43,30 @@ async def on_message(message: Message) -> None:
     if (client.user in message.mentions) or (isinstance(message.channel, DMChannel)):
         username: str = str(message.author)
         user_message: str = message.content
-        channel: str = str(message.channel)
         
-        print(f'[{channel}] {username}: "{user_message}"')
-
-         # List to store formatted messages
+        print(f'[{message.channel}] {username}: "{user_message}"')
+        
+        # List to store formatted messages
         context_messages = []
         
-        # Fetch the last 100 messages in the channel
-        async for msg in message.channel.history(limit=50):
+        # Skip the current message by using a counter
+        skip_current_message = True
+        
+        # Fetch the last 100 messages before the current one in the channel
+        async for msg in message.channel.history(limit=26):  # Fetch 26 to account for current message
+            if skip_current_message:
+                skip_current_message = False
+                continue  # Skip the first message, which is the current message
+            
+            # Format each message
             formatted_message = f"[{msg.created_at}] {msg.author.name}: {msg.content}"
             context_messages.append(formatted_message)
         
         # Create a single string with all the messages
         context_string = "\n".join(context_messages)
-
+        
         await send_message(message, user_message, context_string, username)
+
 
 
 #main
