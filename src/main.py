@@ -1,7 +1,7 @@
 from typing import Final
 import os
 from dotenv import load_dotenv
-from discord import Intents, Client, Message
+from discord import DMChannel, Intents, Client, Message
 from responses import get_response
 
 #load token
@@ -16,7 +16,7 @@ client: Client = Client(intents=intents)
 #message functionality
 async def send_message(message: Message, user_message: str) -> None:
     if not user_message:
-        print('(intents dont work fuck)')
+        print('(intents are not working)')
         return
     
     if is_private := user_message[0] == '?':
@@ -40,7 +40,7 @@ async def on_message(message: Message) -> None:
         return
 
     # Check if the bot is mentioned in the message
-    if (client.user in message.mentions):
+    if (client.user in message.mentions) or (isinstance(message.channel, DMChannel)):
         username: str = str(message.author)
         user_message: str = message.content
         channel: str = str(message.channel)
