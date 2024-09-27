@@ -20,6 +20,6 @@ def get_all_content_from_json_files(directory, output_file):
                         print(f"Error parsing {filename}")
 
 directory_path = '.'  
-output_file = 'timestamped_fixed.txt'
+output_file = 'timestamped_messages.txt'
 get_all_content_from_json_files(directory_path, output_file)
 print(f"Messages saved to {output_file}")
