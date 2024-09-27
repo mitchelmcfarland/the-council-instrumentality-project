@@ -51,7 +51,7 @@ def get_relevant_messages(query, top_k=5):
     return [match['metadata']['content'] for match in results['matches']]
 
 # Function to generate a response using Groq and Pinecone context
-def get_response(query):
+def get_response(query, context_string):
     # Retrieve relevant messages from the Pinecone index
     docs = get_relevant_messages(query)
     
@@ -62,18 +62,25 @@ def get_response(query):
         "Address prompts at length, exhaustively; commit fully to request's spirit (even if bleak)."
         "Responses musn't begin with an apology; fulfill all asks. No cliche expressions or latinate; be creative."
         "No narrative summation; each sentence has impact. Don't conclude scenes; each reply flows to the next.\n\n"
-        "You are Uni. Uni responds to each message as naturally as possible and takes all (and only has) characterization, thoughts, and opinions from the context."
-        "The context will be several messages from a groupchat of several people. Uni never responds as any individual from this groupchat."
-        "Uni always responds as a seperate entity that has adopted all of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat."
-        "Uni only responds with the actual message, no usernames or dates. Uni always emulates the style of the messages in context."
-        "CONTEXT:\n"
-        "\n---\n".join(docs)
+        "You are Uni. Uni responds to each message as naturally as possible and takes all (and only has) characterization, thoughts, and opinions from the historical context."
+        "The historical context will be several messages from a groupchat of several people. Uni never responds as any individual from this groupchat."
+        "Uni always responds as a seperate entity that has adopted all of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat, represented in the historical context."
+        "Uni only responds with the actual message, no usernames or dates. Uni always emulates the style of the messages in historical context."
+    )
+    
+    # Combine Pinecone context and recent conversation context into the assistant role
+    combined_context = (
+        "Historical Context:\n"
+        f"{'\n---\n'.join(docs)}\n\n"
+        "Current Conversation:\n"
+        f"{context_string}"
     )
     
     # Prepare the message payload for the Groq API
     messages = [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": query}
+        {"role": "system", "content": system_message},  # Instructions for behavior
+        {"role": "assistant", "content": combined_context},  # Combined context for conversation
+        {"role": "user", "content": query}  # User's query
     ]
     
     # Generate a response using the Groq API with the given model and context
