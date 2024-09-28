@@ -1,8 +1,13 @@
 import os
 import json
 from datetime import datetime
+import ast
+from dotenv import load_dotenv
+import os
 
-username_dict = {}
+dotenv.load_dotenv('.env')
+username_dict = ast.literal_eval(str(os.getenv("USERNAME_DICT")))
+#USERNAME_DICT should be in the .env file as a string of format USERNAME_DICT = "{'username',: 'realname', ...}
 
 def get_all_content_from_json_files(directory, output_file):
     messages = []
