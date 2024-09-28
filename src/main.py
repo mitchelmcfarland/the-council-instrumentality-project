@@ -14,7 +14,7 @@ intents.message_content = True
 client: Client = Client(intents=intents)
 
 #message functionality
-async def send_message(message: Message, user_message: str, context_string: str, username: str) -> None:
+async def send_message(message: Message, user_message: str, current_conversation: str, username: str) -> None:
     if not user_message:
         print('(intents are not working)')
         return
@@ -23,7 +23,7 @@ async def send_message(message: Message, user_message: str, context_string: str,
         user_message = user_message[1:]
         
     try:
-        response: str = get_response(user_message, context_string, username)
+        response: str = get_response(user_message, current_conversation, username)
         await message.author.send(response) if is_private else await message.channel.send(response)
     except Exception as e:
         print(e)
@@ -53,7 +53,7 @@ async def on_message(message: Message) -> None:
         skip_current_message = True
         
         # Fetch the last 100 messages before the current one in the channel
-        async for msg in message.channel.history(limit=26):  # Fetch 26 to account for current message
+        async for msg in message.channel.history(limit=11): 
             if skip_current_message:
                 skip_current_message = False
                 continue  # Skip the first message, which is the current message
@@ -63,9 +63,9 @@ async def on_message(message: Message) -> None:
             context_messages.append(formatted_message)
         
         # Create a single string with all the messages
-        context_string = "\n".join(context_messages)
+        current_conversation = "\n".join(context_messages)
         
-        await send_message(message, user_message, context_string, username)
+        await send_message(message, user_message, current_conversation, username)
 
 
 
