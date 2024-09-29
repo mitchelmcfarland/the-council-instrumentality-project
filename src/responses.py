@@ -11,7 +11,7 @@ load_dotenv()
 # Pinecone API key and environment variables
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "discord-index"
+index_name = "dataset.txt"
 
 # Initialize Pinecone using the new Pinecone class
 pc = Pinecone(api_key=pinecone_api_key)

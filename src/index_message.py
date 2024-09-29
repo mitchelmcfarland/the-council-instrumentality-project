@@ -3,10 +3,15 @@ import torch
 from pinecone import Pinecone, ServerlessSpec
 from datasets import Dataset
 from semantic_router.encoders import HuggingFaceEncoder
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import math
+import logging
+
+# Configure logging
+logging.basicConfig(filename='embedding_process.log', level=logging.INFO,
+                    format='%(asctime)s %(levelname)s:%(message)s')
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,7 +28,7 @@ pc = Pinecone(api_key=pinecone_api_key)
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name, 
-        dimension=1024,  # Make sure this matches the embedding dimension
+        dimension=1536,  # Keeping 1536 as per your preference
         metric='cosine',
         spec=ServerlessSpec(
             cloud='aws', 
@@ -43,7 +48,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
 # Initialize HuggingFace Encoder
-encoder = HuggingFaceEncoder(name="dunzhang/stella_en_1.5B_v5")
+encoder = HuggingFaceEncoder(
+    name="dunzhang/stella_en_1.5B_v5"
+)
 
 # Move the underlying model to the correct device
 encoder._model.to(device)  # Using _model instead of model
@@ -100,53 +107,88 @@ def split_into_conversational_chunks(messages, gap_threshold=timedelta(hours=3))
 conversational_chunks = split_into_conversational_chunks(messages_data)
 print(f"Split messages into {len(conversational_chunks)} conversational chunks based on a 3-hour gap.")
 
-# Initialize text splitter with the updated chunk size and overlap
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=3000,
-    chunk_overlap=1000
-)
+# Function to split text by tokens
+def split_text_by_tokens(text, tokenizer, max_length=512, overlap=50):
+    tokens = tokenizer.encode(text)
+    chunks = []
+    for i in range(0, len(tokens), max_length - overlap):
+        chunk_tokens = tokens[i:i + max_length]
+        chunk_text = tokenizer.decode(chunk_tokens, skip_special_tokens=True)
+        chunks.append(chunk_text)
+    return chunks
 
-# Prepare data for embedding with metadata including the conversation start time
+# Prepare data for embedding with token-based splitting
+tokenizer = encoder._tokenizer
 processed_data = []
 id_counter = 0
 
 for chunk in conversational_chunks:
-    # Combine messages in the chunk into a single text
     chunk_text = '\n'.join([f"{msg['username']}: {msg['content']}" for msg in chunk])
-    # Split the chunk_text using RecursiveCharacterTextSplitter if necessary
-    split_texts = text_splitter.split_text(chunk_text)
-    # Add metadata for the conversation start time
+    # Split the chunk text by 512 tokens
+    split_texts = split_text_by_tokens(chunk_text, tokenizer, max_length=512, overlap=50)
     conversation_start = chunk[0]['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
     for text in split_texts:
-        processed_data.append({
-            'id': str(id_counter),
-            'metadata': {
-                'content': text,
-                'conversation_start': conversation_start  # Add conversation start metadata
-            }
-        })
-        id_counter += 1
+        if text.strip():  # Ensure non-empty
+            processed_data.append({
+                'id': str(id_counter),
+                'metadata': {
+                    'content': text,
+                    'conversation_start': conversation_start
+                }
+            })
+            id_counter += 1
 
-print(f"After splitting, there are {len(processed_data)} text chunks ready for embedding.")
+print(f"After token splitting, there are {len(processed_data)} text chunks ready for embedding.")
 
 # Convert processed data to Dataset
 dataset = Dataset.from_list(processed_data)
 
-# Function to create embeddings for each text chunk
-def create_embeddings(dataset, encoder, device):
+# Updated create_embeddings function with batching and logging
+def create_embeddings(dataset, encoder, device, batch_size=1):
     embeddings = []
-    for data in tqdm(dataset['metadata'], desc="Creating embeddings"):
-        # Move the text data to the GPU (if available) for embedding
-        inputs = encoder._tokenizer([data['content']], return_tensors='pt', padding=True, truncation=True).to(device)
-        with torch.no_grad():
-            outputs = encoder._model(**inputs)
-            embedding = outputs.last_hidden_state.mean(dim=1).cpu().numpy()[0]
-        embeddings.append(embedding)
+    all_contents = [data['content'] for data in dataset['metadata']]
+    
+    # Calculate the total number of batches
+    total_batches = math.ceil(len(all_contents) / batch_size)
+    
+    # Initialize tqdm with correct total
+    with tqdm(total=total_batches, desc="Creating embeddings") as pbar:
+        for i in range(0, len(all_contents), batch_size):
+            batch_contents = all_contents[i:i + batch_size]
+            
+            try:
+                # Tokenize the batch
+                inputs = encoder._tokenizer(
+                    batch_contents,
+                    return_tensors='pt',
+                    padding=True,
+                    truncation=True,
+                    max_length=512
+                ).to(device)
+                
+                with torch.no_grad():
+                    outputs = encoder._model(**inputs)
+                    # Compute mean pooling for each sequence in the batch
+                    batch_embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
+                
+                embeddings.extend(batch_embeddings)
+                
+                # Update the progress bar
+                pbar.update(1)
+                
+                # Optional: Clear CUDA cache to free memory
+                torch.cuda.empty_cache()
+            except Exception as e:
+                logging.error(f"Error processing batch starting at index {i}: {e}")
+                pbar.update(1)  # Skip this batch and continue
+    
     return embeddings
 
-# Generate embeddings for the dataset using GPU
-print("Generating embeddings with GPU support..." if device == 'cuda' else "Generating embeddings...")
-embeddings = create_embeddings(dataset, encoder, device)
+# Generate embeddings for the dataset using GPU with batching
+batch_size = 1  # Adjust based on your GPU's memory capacity
+print(f"Generating embeddings with GPU support using batch size {batch_size}...")
+
+embeddings = create_embeddings(dataset, encoder, device, batch_size=batch_size)
 print("Embeddings generated successfully.")
 
 # Check the embedding dimension
@@ -154,10 +196,11 @@ dims = len(embeddings[0])
 print(f"Embedding Dimension: {dims}")
 
 # Upsert embeddings and metadata to the index
-batch_size = 128
-print(f"Indexing {len(dataset)} text chunks in batches of {batch_size}...")
-for i in tqdm(range(0, len(dataset), batch_size), desc="Indexing batches"):
-    i_end = min(len(dataset), i + batch_size)
+upsert_batch_size = 128
+print(f"Indexing {len(dataset)} text chunks in batches of {upsert_batch_size}...")
+
+for i in tqdm(range(0, len(dataset), upsert_batch_size), desc="Indexing batches"):
+    i_end = min(len(dataset), i + upsert_batch_size)
     batch = dataset[i:i_end]
     batch_embeddings = embeddings[i:i_end]
     to_upsert = list(zip(batch['id'], batch_embeddings, batch['metadata']))
