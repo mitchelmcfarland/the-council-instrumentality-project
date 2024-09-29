@@ -1,6 +1,5 @@
 import os
 import torch
-import uuid
 from pinecone import Pinecone, ServerlessSpec
 from datasets import Dataset
 from semantic_router.encoders import HuggingFaceEncoder
@@ -24,7 +23,7 @@ pc = Pinecone(api_key=pinecone_api_key)
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name, 
-        dimension=4096,  # Make sure this matches the embedding dimension
+        dimension=1024,  # Make sure this matches the embedding dimension
         metric='cosine',
         spec=ServerlessSpec(
             cloud='aws', 
@@ -44,7 +43,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
 # Initialize HuggingFace Encoder
-encoder = HuggingFaceEncoder(name="nvidia/NV-Embed-v2", trust_remote_code=True)
+encoder = HuggingFaceEncoder(name="dunzhang/stella_en_1.5B_v5")
 
 # Move the underlying model to the correct device
 encoder._model.to(device)  # Using _model instead of model
@@ -161,12 +160,7 @@ for i in tqdm(range(0, len(dataset), batch_size), desc="Indexing batches"):
     i_end = min(len(dataset), i + batch_size)
     batch = dataset[i:i_end]
     batch_embeddings = embeddings[i:i_end]
-    to_upsert = []
-    for j in range(len(batch)):
-        vector_id = batch['id'][j]
-        vector_embedding = batch_embeddings[j].tolist()  # Convert numpy array to list
-        vector_metadata = batch['metadata'][j]
-        to_upsert.append((vector_id, vector_embedding, vector_metadata))
+    to_upsert = list(zip(batch['id'], batch_embeddings, batch['metadata']))
     index.upsert(vectors=to_upsert)
 
 print("Indexing completed successfully.")

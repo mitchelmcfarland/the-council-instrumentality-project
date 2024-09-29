@@ -30,7 +30,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
 # Initialize HuggingFace Encoder
-encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
+encoder = HuggingFaceEncoder(name="dunzhang/stella_en_1.5B_v5")
 
 # Move the underlying model and tokenizer to the correct device
 encoder._model.to(device)
