@@ -5,7 +5,7 @@ from datasets import Dataset
 from semantic_router.encoders import HuggingFaceEncoder
 from tqdm.auto import tqdm
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Load environment variables from .env file
@@ -14,7 +14,7 @@ load_dotenv()
 # Initialize Pinecone using the new method
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "test-index"
+index_name = "e5-3hour"
 
 # Create Pinecone instance
 pc = Pinecone(api_key=pinecone_api_key)
@@ -78,40 +78,52 @@ def load_messages(filepath):
 messages_data = load_messages(file_path)
 print(f"Loaded {len(messages_data)} messages from {file_path}.")
 
-# Function to split messages into 24-hour chunks
-def split_into_daily_chunks(messages):
+# Function to split messages into chunks based on a 3-hour gap
+def split_into_time_gap_chunks(messages, gap_hours=3):
     if not messages:
         return []
+    
     # Sort messages by timestamp
     messages.sort(key=lambda x: x['timestamp'])
-    daily_chunks = []
-    current_day = messages[0]['timestamp'].date()
-    current_chunk = []
-    for msg in messages:
-        if msg['timestamp'].date() != current_day:
-            daily_chunks.append(current_chunk)
+    
+    time_gap_chunks = []
+    current_chunk = [messages[0]]
+    
+    for i in range(1, len(messages)):
+        current_message = messages[i]
+        previous_message = messages[i - 1]
+        
+        # Calculate the time difference between the current message and the previous one
+        time_difference = current_message['timestamp'] - previous_message['timestamp']
+        
+        # If the time difference is greater than the specified gap, start a new chunk
+        if time_difference > timedelta(hours=gap_hours):
+            time_gap_chunks.append(current_chunk)
             current_chunk = []
-            current_day = msg['timestamp'].date()
-        current_chunk.append(msg)
+        
+        current_chunk.append(current_message)
+    
+    # Append the last chunk
     if current_chunk:
-        daily_chunks.append(current_chunk)
-    return daily_chunks
+        time_gap_chunks.append(current_chunk)
+    
+    return time_gap_chunks
 
-# Split messages into daily chunks
-daily_chunks = split_into_daily_chunks(messages_data)
-print(f"Split messages into {len(daily_chunks)} daily chunks.")
+# Split messages into chunks based on a 3-hour gap
+time_gap_chunks = split_into_time_gap_chunks(messages_data, gap_hours=3)
+print(f"Split messages into {len(time_gap_chunks)} chunks based on 3-hour gaps.")
 
 # Initialize text splitter with the updated chunk size and overlap
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=750,
-    chunk_overlap=100
+    chunk_size=3000,
+    chunk_overlap=1000
 )
 
 # Prepare data for embedding with metadata including the day of interaction
 processed_data = []
 id_counter = 0
 
-for chunk in daily_chunks:
+for chunk in time_gap_chunks:
     # Combine messages in the chunk into a single text
     chunk_text = '\n'.join([f"{msg['username']}: {msg['content']}" for msg in chunk])
     # Split the chunk_text using RecursiveCharacterTextSplitter
