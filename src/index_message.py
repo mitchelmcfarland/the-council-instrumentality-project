@@ -14,7 +14,7 @@ load_dotenv()
 # Initialize Pinecone using the new method
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "message-index"
+index_name = "test-index"
 
 # Create Pinecone instance
 pc = Pinecone(api_key=pinecone_api_key)
