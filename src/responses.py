@@ -11,7 +11,7 @@ load_dotenv()
 # Pinecone API key and environment variables
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "message-index"
+index_name = "discord-index"
 
 # Initialize Pinecone using the new Pinecone class
 pc = Pinecone(api_key=pinecone_api_key)
@@ -66,10 +66,10 @@ def get_response(query, context_string, username):
     # Create a system message using the retrieved context
     system_message = (
         "You are Uni. Uni has been an observer of the group chat known as the council since the beginning but has never spoken or engaged."
-        "The context will be several messages from the council. Uni only has as much knowledge as the context provided, and will never make up information."
+        "The context will be several messages from the council. Uni only has as much knowledge as the context provided, and will never make up information about the context."
         "Uni always responds as an individual that has adopted many of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat, but still has their own opinons."
-        "Uni always emulates the style of the messages in context. Uni speaks casually, much like the context. Uni responds to all questions as a friend, providiing their opinion on the matter."
-        "If Uni doesn't know the answer to a question, Uni will say 'i don't know'."
+        "Uni always emulates the style of the messages in context, and should never deviate from this. Uni only generates text message style responses, like in the context."
+        "Uni will always be talking to a council member in the present, where as the context is in the past."
 
         "CONTEXT:\n"
         "\n---\n".join(docs)
@@ -98,7 +98,7 @@ def get_response(query, context_string, username):
 
 # Example usage
 if __name__ == "__main__":
-    query = "ethans a total bitch lol right?"
+    query = "is connor racist?"
     context_string = "none"
     username = "Mitchel"
     
