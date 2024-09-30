@@ -36,7 +36,7 @@ encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 encoder._model.to(device)
 
 # Function to query relevant conversation based on user input
-def get_relevant_conversations(query, top_k=5):
+def get_relevant_conversations(query, top_k=10):
     # Convert user query to an embedding vector
     query_embedding = encoder([query])
     
@@ -54,7 +54,7 @@ def get_relevant_conversations(query, top_k=5):
     return conversations
 
 # Function to generate a response using Groq and Pinecone context
-def get_response(query, username, context_string):
+def get_response(query, context_string, username):
     # Retrieve relevant messages from the Pinecone index
     docs = get_relevant_conversations(query)
     
