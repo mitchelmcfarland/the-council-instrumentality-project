@@ -77,7 +77,7 @@ def get_response(query, username, context_string):
     
     # Prepare the message payload for the Groq API
     messages = [
-        {"role": "assistant", "content": current_conversation},  # current convo
+        #{"role": "assistant", "content": current_conversation},  # current convo
         {"role": "system", "content": system_message},  # Instructions for behavior
         {"role": "user", "content": f"{username}: {query}"}  # User's query
     ]
