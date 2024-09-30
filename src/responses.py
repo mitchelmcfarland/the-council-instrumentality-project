@@ -11,7 +11,7 @@ load_dotenv()
 # Pinecone API key and environment variables
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "dataset.txt"
+index_name = "e5-3hour"
 
 # Initialize Pinecone using the new Pinecone class
 pc = Pinecone(api_key=pinecone_api_key)
@@ -30,7 +30,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
 # Initialize HuggingFace Encoder
-encoder = HuggingFaceEncoder(name="dunzhang/stella_en_1.5B_v5")
+encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
 # Move the underlying model and tokenizer to the correct device
 encoder._model.to(device)
@@ -50,41 +50,36 @@ def get_relevant_conversations(query, top_k=5):
     # Extract the content of the matched messages
     conversations = [match['metadata']['content'] for match in results['matches']]
     
-    # Print the retrieved conversations for debugging
-    print("\n=== Retrieved Conversations ===")
-    for i, conversation in enumerate(conversations, 1):
-        print(f"Conversation {i}:\n{conversation}\n---")
-    
     # Return the list of retrieved conversations
     return conversations
 
 # Function to generate a response using Groq and Pinecone context
-def get_response(query, context_string, username):
+def get_response(query, username, context_string):
     # Retrieve relevant messages from the Pinecone index
     docs = get_relevant_conversations(query)
     
     # Create a system message using the retrieved context
     system_message = (
-        "You are Uni. Uni has been an observer of the group chat known as the council since the beginning but has never spoken or engaged."
-        "The context will be several messages from the council. Uni only has as much knowledge as the context provided, and will never make up information about the context."
+        "You are Uni. Uni has been an observer of the group chat known as the council since the beginning but has never spoken or engaged in the council."
+        "The context will be several conversations from the council. Uni only has as much knowledge as the historical context provided, and will never make up information about the historical context."
         "Uni always responds as an individual that has adopted many of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat, but still has their own opinons."
-        "Uni always emulates the style of the messages in context, and should never deviate from this. Uni only generates text message style responses, like in the context."
-        "Uni will always be talking to a council member in the present, where as the context is in the past."
+        "Uni always emulates the style of the messages in the historical context, and should never deviate from this. Uni only generates text message style responses, like in the historical context. Uni never begins reponses with a username, only the content of its own message."
+        "Uni will always be talking to one or many council members in the present, where as the historical context is in the past."
 
-        "CONTEXT:\n"
+        "HISTORICAL CONTEXT:\n"
         "\n---\n".join(docs)
     )
     
     current_conversation = (
-        "Current Conversation:\n"
+        "CURRENT CONVERSATION:\n"
         f"{context_string}"
     )
     
     # Prepare the message payload for the Groq API
     messages = [
-        #{"role": "assistant", "content": current_conversation},  # current convo
+        {"role": "assistant", "content": current_conversation},  # current convo
         {"role": "system", "content": system_message},  # Instructions for behavior
-        {"role": "user", "content": username + ": " + query}  # User's query
+        {"role": "user", "content": f"{username}: {query}"}  # User's query
     ]
     
     # Generate a response using the Groq API with the given model and context
@@ -98,7 +93,7 @@ def get_response(query, context_string, username):
 
 # Example usage
 if __name__ == "__main__":
-    query = "is connor racist?"
+    query = "remember when connor was talking about breaking the asphalt of the intersection?"
     context_string = "none"
     username = "Mitchel"
     

@@ -14,7 +14,7 @@ load_dotenv()
 # Initialize Pinecone using the new method
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
-index_name = "stella-3hour"
+index_name = "e5-3hour"
 
 # Create Pinecone instance
 pc = Pinecone(api_key=pinecone_api_key)
@@ -43,7 +43,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"CUDA {'is' if device == 'cuda' else 'is not'} available. Using {device.upper()}.")
 
 # Initialize HuggingFace Encoder
-encoder = HuggingFaceEncoder(name="dunzhang/stella_en_1.5B_v5")
+encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 
 # Move the underlying model to the correct device
 encoder._model.to(device)  # Using _model instead of model

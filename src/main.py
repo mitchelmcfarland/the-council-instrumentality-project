@@ -4,36 +4,33 @@ from dotenv import load_dotenv
 from discord import DMChannel, Intents, Client, Message
 from responses import get_response
 
-#load token
+# load token
 load_dotenv()
 TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
 
-#bot setup
+# bot setup
 intents: Intents = Intents.default()
 intents.message_content = True
 client: Client = Client(intents=intents)
 
-#message functionality
-async def send_message(message: Message, user_message: str, current_conversation: str, username: str) -> None:
-    if not user_message:
+# message functionality
+async def send_message(message: Message, username: str, message_content: str, current_conversation: str) -> None:
+    if not message_content:
         print('(intents are not working)')
         return
-    
-    if is_private := user_message[0] == '?':
-        user_message = user_message[1:]
-        
+
     try:
-        response: str = get_response(user_message, current_conversation, username)
-        await message.author.send(response) if is_private else await message.channel.send(response)
+        response: str = get_response(message_content, current_conversation, username)
+        await message.author.send(response) if isinstance(message.channel, DMChannel) else await message.channel.send(response)
     except Exception as e:
         print(e)
 
-#bot startup
+# bot startup
 @client.event
 async def on_ready() -> None:
     print(f'{client.user} is now running.')
-    
-#step idk handling incoming messages
+
+# handling incoming messages
 @client.event
 async def on_message(message: Message) -> None:
     if message.author == client.user:
@@ -41,37 +38,35 @@ async def on_message(message: Message) -> None:
 
     # Check if the bot is mentioned in the message or if they are in a DM
     if (client.user in message.mentions) or (isinstance(message.channel, DMChannel)):
-        username: str = str(message.author)
-        user_message: str = message.content
-        
-        print(f'[{message.channel}] {username}: "{user_message}"')
-        
-        # List to store formatted messages
+
+        # Get the display name and cleaned message content separately
+        username = message.author.display_name
+        message_content = message.clean_content
+
+        print(f'[{message.channel}] {username}: "{message_content}"')
+
+        # List to store formatted messages for the conversation history
         context_messages = []
-        
-        # Skip the current message by using a counter
-        skip_current_message = True
-        
+
         # Fetch the last 100 messages before the current one in the channel
-        async for msg in message.channel.history(limit=11): 
-            if skip_current_message:
-                skip_current_message = False
-                continue  # Skip the first message, which is the current message
-            
-            # Format each message
-            formatted_message = f"[{msg.created_at}] {msg.author.name}: {msg.content}"
+        async for msg in message.channel.history(limit=100):
+            # Format each message and strip mentions using clean_content
+            formatted_message = f"{msg.author.display_name}: {msg.clean_content}"
             context_messages.append(formatted_message)
-        
-        # Create a single string with all the messages
+
+            # Stop when we've collected 11 messages
+            if len(context_messages) == 11:
+                break
+
+        # Create a single string with all the conversation messages
         current_conversation = "\n".join(context_messages)
-        
-        await send_message(message, user_message, current_conversation, username)
 
+        # Pass the current cleaned message content and username separately, along with the formatted conversation
+        await send_message(message, username, message_content, current_conversation)
 
-
-#main
+# main
 def main() -> None:
-    client.run(token=TOKEN)
-    
+    client.run(TOKEN)
+
 if __name__ == "__main__":
-    main()    
+    main()
