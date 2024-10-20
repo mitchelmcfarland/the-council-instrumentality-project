@@ -24,7 +24,7 @@ putting in your personal API keys.
 
 Right now, the bot strictly requires that you have a Pinecone Index with the information you want to retrieve embedded within.
 
-Initially, we exported all of our messages from the old group chat in a json format and ran it through [message_parser](./src/message_parser.py) which gave us our dataset in a text file. From there, we used [index_message](./src/index_message.py) to automatically vectorize, upsert, and generate metadata in the Pinecone Index.
+Initially, we exported all of our messages from the old group chat in JSON format and ran it through [message_parser](./src/message_parser.py), which gave us our dataset in a text file. From there, we used [index_message](./src/index_message.py) to automatically vectorize, upsert, and generate metadata in the Pinecone Index.
 
 You must create a discord bot using the developer portal, which is also where you will get your API key from. 
 [Discord Developer Portal](https://discord.com/developers/applications)
