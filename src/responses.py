@@ -36,35 +36,37 @@ encoder = HuggingFaceEncoder(name="dwzhu/e5-base-4k")
 encoder._model.to(device)
 
 # Function to query relevant conversation based on user input
-def get_relevant_conversations(query, top_k=10):
-    # Convert user query to an embedding vector
+def get_relevant_conversations(query, top_k=5):
     query_embedding = encoder([query])
-    
-    # Search the Pinecone index for the most relevant conversation
     results = index.query(
         vector=query_embedding,
         top_k=top_k,
         include_metadata=True
     )
     
-    # Extract the content of the matched messages
-    conversations = [match['metadata']['content'] for match in results['matches']]
+    # Extract both the content and the day_of_interaction
+    conversations = []
+    for match in results['matches']:
+        content = match['metadata']['content']
+        day = match['metadata'].get('day_of_interaction', 'Unknown Date')
+        conversations.append(f"[{day}] {content}")
     
-    # Return the list of retrieved conversations
     return conversations
 
 # Function to generate a response using Groq and Pinecone context
-def get_response(query, context_string, username):
+def get_response(message_content, current_conversation):
     # Retrieve relevant messages from the Pinecone index
-    docs = get_relevant_conversations(query)
+    docs = get_relevant_conversations(message_content)
     
     # Create a system message using the retrieved context
     system_message = (
-        "You are Uni. Uni has been an observer of the group chat known as the council since the beginning but has never spoken or engaged in the council."
+        "You are Uni. Uni is essentially a historian or librarian of the Council. Uni knows everything about the group chat, but distinctly has their own opinions and is their own person."
         "The context will be several conversations from the council. Uni only has as much knowledge as the historical context provided, and will never make up information about the historical context."
         "Uni always responds as an individual that has adopted many of the thoughts, feelings, opinions, and mannerisms of every individual in the groupchat, but still has their own opinons."
         "Uni always emulates the style of the messages in the historical context, and should never deviate from this. Uni only generates text message style responses, like in the historical context. Uni never begins reponses with a username, only the content of its own message."
-        "Uni will always be talking to one or many council members in the present, where as the historical context is in the past."
+        "Uni will always be talking to one or many council members in the present, where as the historical context is in the past. Unis first priority should always be the users message."
+        "The historical context is purely a knowledge base and reference for message style. If the historical context is not relevant, it should only be used as a reference for message style."
+        "The current conversation should only be used to aid your understanding of the users message. It should never be used as a reference for the message style."
 
         "HISTORICAL CONTEXT:\n"
         "\n---\n".join(docs)
@@ -72,14 +74,14 @@ def get_response(query, context_string, username):
     
     current_conversation = (
         "CURRENT CONVERSATION:\n"
-        f"{context_string}"
+        f"{current_conversation}"
     )
     
     # Prepare the message payload for the Groq API
     messages = [
-        #{"role": "assistant", "content": current_conversation},  # current convo
+        {"role": "assistant", "content": current_conversation},  # current convo
         {"role": "system", "content": system_message},  # Instructions for behavior
-        {"role": "user", "content": f"{username}: {query}"}  # User's query
+        {"role": "user", "content": message_content}  # User's query
     ]
     
     # Generate a response using the Groq API with the given model and context
