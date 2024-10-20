@@ -84,7 +84,7 @@ def get_response(query, context_string, username):
     
     # Generate a response using the Groq API with the given model and context
     chat_response = groq_client.chat.completions.create(
-        model="llama-3.2-90b-text-preview",
+        model="llama-3.2-90b-vision-preview",
         messages=messages
     )
     
