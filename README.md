@@ -14,7 +14,7 @@ This setup allows it to be free to use, end to end.
 - Option for local response generation.
 
 ## Usage
-To install dependencies, make sure you are in the repositorie's directory after cloning, then run:
+To install dependencies, make sure you are in the repository's directory after cloning, then run:
    ```bash
    pip install -r requirements.txt
    ```
