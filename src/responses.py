@@ -79,14 +79,14 @@ def get_response(message_content, current_conversation):
     
     # Prepare the message payload for the Groq API
     messages = [
-        {"role": "assistant", "content": current_conversation},  # current convo
+        #{"role": "assistant", "content": current_conversation},  # current convo
         {"role": "system", "content": system_message},  # Instructions for behavior
         {"role": "user", "content": message_content}  # User's query
     ]
     
     # Generate a response using the Groq API with the given model and context
     chat_response = groq_client.chat.completions.create(
-        model="llama-3.2-90b-vision-preview",
+        model="llama-3.3-70b-versatile",
         messages=messages
     )
     

@@ -44,5 +44,5 @@ If you have an appropriate GPU, this may be preferable, but I have found the res
 Contributions are welcome! Please open an issue or submit a pull request to get involved. Make sure to follow the contribution guidelines.
 
 ## License
-This project is licensed under the GNU General Public License v3.0. See the [LICENSE](./LICENSE.txt) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE.txt) file for more details.
 
