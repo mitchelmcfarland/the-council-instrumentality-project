@@ -1,8 +1,9 @@
 import os
 import torch
+from ollama import chat
+from ollama import ChatResponse
 from pinecone import Pinecone
 from semantic_router.encoders import HuggingFaceEncoder
-from groq import Groq
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (if present)
@@ -19,10 +20,6 @@ pc = Pinecone(api_key=pinecone_api_key)
 # Connect to the existing index
 index = pc.Index(index_name)
 print(f"Connected to index: {index_name}")
-
-# Initialize Groq client
-groq_api_key = os.getenv("GROQ_API_KEY")
-groq_client = Groq(api_key=groq_api_key)
 
 # Initialize Encoder for text embeddings
 # Initialize Encoder and set device
@@ -76,7 +73,7 @@ def get_response(message_content, current_conversation):
         "CURRENT CONVERSATION:\n"
         f"{current_conversation}"
     )
-    
+
     # Prepare the message payload for the Groq API
     messages = [
         #{"role": "assistant", "content": current_conversation},  # current convo
@@ -85,13 +82,10 @@ def get_response(message_content, current_conversation):
     ]
     
     # Generate a response using the Groq API with the given model and context
-    chat_response = groq_client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=messages
-    )
+    response: ChatResponse = chat(model='gpt-oss:20b', messages=messages)
     
     # Return the AI's response
-    return chat_response.choices[0].message.content
+    return response['message']['content']
 
 # Example usage
 if __name__ == "__main__":
