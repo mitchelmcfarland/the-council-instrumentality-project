@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 import discord
 
+import llamacpp
+
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
@@ -21,6 +23,6 @@ async def on_message(message):
         return
 
     if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+        await message.channel.send(llamacpp.get_ai_response())
 
 client.run(TOKEN)
