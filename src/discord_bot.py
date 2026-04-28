@@ -21,11 +21,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if not (isinstance(message.channel, discord.DMChannel)):
-        return
-    
-    #if message.content.startswith('$hello'):
-
-    await message.channel.send(llamacpp.get_ai_response(message.content))
+    if (isinstance(message.channel, discord.DMChannel)) or client.user in message.mentions:
+        await message.channel.send(llamacpp.get_ai_response(message.content))
 
 client.run(TOKEN)
