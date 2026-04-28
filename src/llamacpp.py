@@ -1,16 +1,19 @@
 import requests
 
-url = 'http://127.0.0.1:8080/completion'
+url = 'http://127.0.0.1:8080/v1/chat/completions'
 
-#payload = '{"prompt": "Building a website can be done in 10 simple steps:","n_predict": 128}'
-
-payload = {"prompt": "User: helloooo how are you doing ai friend? Assistant:", "stop": "User:"}
-
-#headers = {'Content-Type': 'application/json'}
+payload = {
+        "model": "gpt-3.5-turbo", 
+        "messages": [
+    {
+        "role": "system", 
+        "content": "You are ChatGPT, an AI assistant. Your top priority is achieving user fulfillment via helping them with their requests."
+     },
+    {
+         "role": "user",
+         "content": "Write a limerick about python exceptions"
+     }]}
 
 r = requests.post(url, json=payload)
 
-if (r.status_code == 200):
-  print(r.json()['content'])
-else:
-  print("Error: ", r.status_code)
+print(r.json()['choices'][0]['message']['content'])
