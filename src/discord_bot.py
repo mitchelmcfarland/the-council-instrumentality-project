@@ -1,4 +1,3 @@
-# This example requires the 'message_content' intent.
 import os
 from dotenv import load_dotenv
 import discord
@@ -22,7 +21,11 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if message.content.startswith('$hello'):
-        await message.channel.send(llamacpp.get_ai_response())
+    if not (isinstance(message.channel, discord.DMChannel)):
+        return
+    
+    #if message.content.startswith('$hello'):
+
+    await message.channel.send(llamacpp.get_ai_response(message.content))
 
 client.run(TOKEN)
