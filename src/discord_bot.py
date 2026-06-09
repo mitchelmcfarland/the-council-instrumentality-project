@@ -22,6 +22,6 @@ async def on_message(message):
         return
 
     if (isinstance(message.channel, discord.DMChannel)) or client.user in message.mentions:
-        await message.channel.send(llamacpp.get_ai_response(message.content))
+        await message.channel.send(await llamacpp.get_ai_response(message.content))
 
 client.run(TOKEN)

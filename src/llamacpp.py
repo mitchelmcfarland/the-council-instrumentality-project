@@ -1,4 +1,5 @@
-import requests
+#import requests
+import aiohttp
 
 url = 'http://127.0.0.1:8080/v1/chat/completions'
 
@@ -12,8 +13,22 @@ history = {
         ]
     }
 
+async def get_ai_response(content):
+    history["messages"].append({"role": "user", "content": content})
 
-def get_ai_response(content):
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=history) as r:
+            message = (await r.json())['choices'][0]['message']['content']
+            role = (await r.json())['choices'][0]['message']["role"]
+
+    history["messages"].append({"role": role, "content": message})
+
+    print(history["messages"])
+
+    return message
+
+
+"""def old_get_ai_response(content):
     
     history["messages"].append({"role": "user", "content": content})
 
@@ -27,4 +42,4 @@ def get_ai_response(content):
 
     print(history["messages"])
 
-    return message
+    return message"""
