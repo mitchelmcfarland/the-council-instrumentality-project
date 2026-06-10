@@ -26,20 +26,3 @@ async def get_ai_response(content):
     print(history["messages"])
 
     return message
-
-
-"""def old_get_ai_response(content):
-    
-    history["messages"].append({"role": "user", "content": content})
-
-    r = requests.post(url, json=history)
-
-    message = r.json()['choices'][0]['message']['content']
-
-    role = r.json()['choices'][0]['message']["role"]
-
-    history["messages"].append({"role": role, "content": message})
-
-    print(history["messages"])
-
-    return message"""

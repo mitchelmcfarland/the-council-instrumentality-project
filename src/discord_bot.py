@@ -22,6 +22,11 @@ async def on_message(message):
         return
 
     if (isinstance(message.channel, discord.DMChannel)) or client.user in message.mentions:
-        await message.channel.send(await llamacpp.get_ai_response(message.content))
+        await message.channel.typing()
+        response = await llamacpp.get_ai_response(message.content)
+        if len(response) > 2000:
+            await message.channel.send("Too long!")
+            return
+        await message.channel.send(response)
 
 client.run(TOKEN)
