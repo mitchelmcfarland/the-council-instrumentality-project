@@ -1,4 +1,5 @@
 import os
+import textwrap
 from dotenv import load_dotenv
 import discord
 
@@ -25,8 +26,10 @@ async def on_message(message):
         await message.channel.typing()
         response = await llamacpp.get_ai_response(message.content)
         if len(response) > 2000:
-            await message.channel.send("Too long!")
-            return
-        await message.channel.send(response)
+            split_response = textwrap.wrap(response, width=2000, replace_whitespace=False)
+            for slice in split_response:
+                await message.channel.send(slice)
+        else:
+            await message.channel.send(response)
 
 client.run(TOKEN)
